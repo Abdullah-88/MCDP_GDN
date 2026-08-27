@@ -1,12 +1,12 @@
 import torch
 from torch import nn
 
-def l2norm(x, dim=-1, eps=1e-6):
-    return x * torch.rsqrt((x * x).sum(dim=dim, keepdim=True) + eps)
+def l2norm(x, dim = -1, eps = 1e-6):
+    return x * torch.rsqrt((x * x).sum(dim = dim, keepdim = True) + eps)
 
 class GatedDeltaNet(nn.Module):
     def __init__(
-        self, d_in, d_out, dropout, num_heads, qkv_bias=False
+        self, d_in, d_out, dropout, num_heads, qkv_bias = False
     ):
         super().__init__()
         assert d_out % num_heads == 0
@@ -15,19 +15,19 @@ class GatedDeltaNet(nn.Module):
         self.num_heads = num_heads
         self.head_dim = d_out // num_heads
 
-        self.W_query = nn.Linear(d_in, d_out, bias=qkv_bias)
-        self.W_key = nn.Linear(d_in, d_out, bias=qkv_bias)
-        self.W_value = nn.Linear(d_in, d_out, bias=qkv_bias)
+        self.W_query = nn.Linear(d_in, d_out, bias = qkv_bias)
+        self.W_key = nn.Linear(d_in, d_out, bias = qkv_bias)
+        self.W_value = nn.Linear(d_in, d_out, bias = qkv_bias)
      
-        self.W_gate = nn.Linear(d_in, d_out, bias=False)
-        self.W_beta = nn.Linear(d_in, d_out, bias=False)
+        self.W_gate = nn.Linear(d_in, d_out, bias = False)
+        self.W_beta = nn.Linear(d_in, d_out, bias = False)
 
-        self.W_alpha = nn.Linear(d_in, num_heads, bias=False)
+        self.W_alpha = nn.Linear(d_in, num_heads, bias = False)
         self.dt_bias = nn.Parameter(torch.ones(num_heads))
         A_init = torch.empty(num_heads).uniform_(0, 16)
         self.A_log = nn.Parameter(torch.log(A_init))
        
-        self.norm = nn.RMSNorm(self.head_dim, eps=1e-6)
+        self.norm = nn.RMSNorm(self.head_dim, eps = 1e-6)
 
         self.out_proj = nn.Linear(d_out, d_out)
         self.dropout = nn.Dropout(dropout)
@@ -56,8 +56,8 @@ class GatedDeltaNet(nn.Module):
         values = values.transpose(1, 2)
         beta = beta.transpose(1, 2)
 
-        queries = l2norm(queries, dim=-1) / (self.head_dim ** 0.5)
-        keys = l2norm(keys, dim=-1)
+        queries = l2norm(queries, dim = -1) / (self.head_dim ** 0.5)
+        keys = l2norm(keys, dim = -1)
        
         S = x.new_zeros(b, self.num_heads, self.head_dim, self.head_dim)
 
@@ -103,11 +103,11 @@ class FeedForward(nn.Module):
         return self.net(x)
 
 class MCGatingUnit(nn.Module):
-    def __init__(self,dim,dropout):
+    def __init__(self, dim, dropout):
         super().__init__()
         
-        self.gdn_1 = GatedDeltaNet(dim,dim,dropout,8)     
-        self.gdn_2 = GatedDeltaNet(dim,dim,dropout,8)    
+        self.gdn_1 = GatedDeltaNet(dim, dim, dropout, 8)     
+        self.gdn_2 = GatedDeltaNet(dim, dim, dropout, 8)    
        
     def forward(self, x):
         u, v = x, x 
@@ -121,8 +121,8 @@ class MCDPGDNBlock(nn.Module):
         super().__init__()
        
         self.norm = nn.LayerNorm(d_model)       
-        self.mcgu = MCGatingUnit(d_model,dropout)
-        self.ffn = FeedForward(d_model,d_ffn,dropout)
+        self.mcgu = MCGatingUnit(d_model, dropout)
+        self.ffn = FeedForward(d_model, d_ffn, dropout)
         
     def forward(self, x):
         residual = x
